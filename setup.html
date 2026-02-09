@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Be a Manager 2026 - Manager Profile</title>
+    <style>
+        :root {
+            --cm-dark: #00332c;
+            --cm-green: #004d40;
+            --cm-light-green: #00695c;
+            --cm-gold: #ffcc00;
+            --cm-border: #777;
+        }
+
+        body {
+            background-color: #111;
+            color: var(--cm-gold);
+            font-family: "Tahoma", "Geneva", sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            width: 1024px;
+            height: 700px;
+            background-color: var(--cm-green);
+            border: 3px outset var(--cm-border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        #header {
+            background: linear-gradient(to bottom, #333, #111);
+            color: #fff;
+            padding: 4px 12px;
+            font-size: 11px;
+            border-bottom: 2px solid var(--cm-gold);
+        }
+
+        #main-layout {
+            display: flex;
+            flex-grow: 1;
+        }
+
+        /* Profile Sidebar (Contextual) */
+        #sidebar {
+            width: 150px;
+            background-color: var(--cm-dark);
+            border-right: 2px solid var(--cm-gold);
+            padding: 10px;
+            font-size: 11px;
+            color: #fff;
+        }
+
+        /* Form Area */
+        #content {
+            flex-grow: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .form-panel {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--cm-gold);
+            padding: 25px;
+            width: 600px;
+        }
+
+        h2 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--cm-gold);
+            padding-bottom: 10px;
+            font-style: italic;
+            font-size: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 12px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        input, select {
+            background: #eee;
+            border: 2px inset #fff;
+            padding: 5px;
+            font-family: "Tahoma";
+            font-size: 13px;
+            color: #000;
+        }
+
+        .confirm-btn {
+            background: var(--cm-light-green);
+            color: #fff;
+            border: 1px outset #aaa;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .confirm-btn:hover {
+            background: var(--cm-gold);
+            color: var(--cm-dark);
+        }
+
+        .back-link {
+            margin-top: 15px;
+            color: #ccc;
+            font-size: 11px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="header">
+            <span>NEW GAME SETUP - MANAGER PROFILE</span>
+        </div>
+
+        <div id="main-layout">
+            <div id="sidebar">
+                <div style="font-weight:bold; color:var(--cm-gold); margin-bottom:10px;">INSTRUCTIONS</div>
+                Please enter your personal details and select the club you wish to manage for the 2025/26 season.
+            </div>
+
+            <div id="content">
+                <div class="form-panel">
+                    <h2>Manager Details</h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="input-group">
+                            <label>First Name</label>
+                            <input type="text" id="firstName" placeholder="e.g. Arsene">
+                        </div>
+                        <div class="input-group">
+                            <label>Surname</label>
+                            <input type="text" id="surname" placeholder="e.g. Wenger">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Nationality</label>
+                        <select id="nationality">
+                            <option>English</option>
+                            <option>Scottish</option>
+                            <option>French</option>
+                            <option>Spanish</option>
+                            <option>German</option>
+                            <option>Italian</option>
+                            <option>Other...</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Reputation Level</label>
+                        <select id="level">
+                            <option value="local">Sunday League Footballer (Hard)</option>
+                            <option value="pro">Professional Footballer (Normal)</option>
+                            <option value="world">International Footballer (Easy)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Select Team (Premier League 2026)</label>
+                        <select id="team">
+                            <option>Arsenal</option>
+                            <option>Aston Villa</option>
+                            <option>Bournemouth</option>
+                            <option>Brentford</option>
+                            <option>Brighton & Hove Albion</option>
+                            <option>Burnley</option>
+                            <option>Chelsea</option>
+                            <option>Crystal Palace</option>
+                            <option>Everton</option>
+                            <option>Fulham</option>
+                            <option>Leeds United</option>
+                            <option>Liverpool</option>
+                            <option>Manchester City</option>
+                            <option>Manchester United</option>
+                            <option>Newcastle United</option>
+                            <option>Nottingham Forest</option>
+                            <option>Sunderland</option>
+                            <option>Tottenham Hotspur</option>
+                            <option>West Ham United</option>
+                            <option>Wolverhampton Wanderers</option>
+                        </select>
+                    </div>
+
+                    <button class="confirm-btn" onclick="saveProfile()">CONFIRM SETTINGS</button>
+                    <center><div class="back-link" onclick="window.location.href='index.html'">Return to Main Menu</div></center>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function saveProfile() {
+            const profile = {
+                first: document.getElementById('firstName').value,
+                last: document.getElementById('surname').value,
+                nat: document.getElementById('nationality').value,
+                lvl: document.getElementById('level').value,
+                team: document.getElementById('team').value
+            };
+
+            if(!profile.first || !profile.last) {
+                alert("Please enter a full name.");
+                return;
+            }
+
+            // Save to browser storage for the next screens
+            localStorage.setItem('managerProfile', JSON.stringify(profile));
+            alert("Database Initialized. Welcome, Boss.");
+            // window.location.href = 'squad.html'; // This will be our next step
+        }
+    </script>
+</body>
+</html>
