@@ -13,7 +13,7 @@
         }
 
         body {
-            background-color: #000;
+            background-color: #111;
             color: var(--cm-gold);
             font-family: "Tahoma", "Geneva", sans-serif;
             margin: 0;
@@ -23,24 +23,21 @@
             height: 100vh;
         }
 
-        /* The "Game Window" feel - prevents it feeling like a giant empty website */
         #game-container {
             width: 1024px;
-            height: 768px;
+            height: 700px;
             background-color: var(--cm-green);
             border: 3px outset var(--cm-border);
             display: flex;
             flex-direction: column;
-            position: relative;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
         }
 
-        /* Header Bar */
         #header {
-            background: linear-gradient(to bottom, #444, #222);
-            color: white;
-            padding: 5px 15px;
-            font-size: 12px;
+            background: linear-gradient(to bottom, #333, #111);
+            color: #fff;
+            padding: 4px 12px;
+            font-size: 11px;
             border-bottom: 2px solid var(--cm-gold);
             display: flex;
             justify-content: space-between;
@@ -49,31 +46,30 @@
         #main-layout {
             display: flex;
             flex-grow: 1;
-            overflow: hidden;
         }
 
-        /* Sidebar Navigation */
+        /* Sidebar */
         #sidebar {
-            width: 160px;
+            width: 150px;
             background-color: var(--cm-dark);
             border-right: 2px solid var(--cm-gold);
-            padding: 15px 5px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 5px;
         }
 
         .menu-btn {
             background: var(--cm-light-green);
             color: #fff;
-            border: 1px outset #888;
-            padding: 8px 10px;
+            border: 1px outset #aaa;
+            padding: 10px;
             text-align: center;
             cursor: pointer;
             font-weight: bold;
             text-decoration: none;
             font-size: 11px;
-            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .menu-btn:hover {
@@ -81,68 +77,68 @@
             color: var(--cm-dark);
         }
 
-        /* Main Content Area */
+        /* Content Area */
         #content {
             flex-grow: 1;
-            padding: 0;
             display: flex;
             flex-direction: column;
         }
 
-        /* Top Title Section */
-        #title-section {
-            background: var(--cm-dark);
-            padding: 20px;
+        #title-banner {
+            background: #002b25;
+            padding: 30px;
             border-bottom: 1px solid var(--cm-gold);
             text-align: center;
         }
 
         h1 {
             margin: 0;
-            font-size: 42px;
+            font-size: 50px;
             font-style: italic;
-            letter-spacing: -1px;
-            text-shadow: 2px 2px #000;
+            text-shadow: 3px 3px #000;
         }
 
-        /* World News / Info Panels (Fills the empty space) */
+        /* Facts / Dashboard Section */
         #dashboard {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            padding: 20px;
-            flex-grow: 1;
+            gap: 20px;
+            padding: 30px;
         }
 
-        .info-panel {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255, 204, 0, 0.3);
-            padding: 10px;
+        .panel {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--cm-gold);
+            height: 200px;
+            display: flex;
+            flex-direction: column;
         }
 
         .panel-header {
             background: var(--cm-dark);
-            padding: 4px 8px;
+            padding: 5px 10px;
             font-size: 12px;
             font-weight: bold;
             border-bottom: 1px solid var(--cm-gold);
-            margin-bottom: 10px;
         }
 
-        .data-row {
+        .fact-box {
+            padding: 20px;
+            font-size: 16px;
+            color: white;
+            line-height: 1.5;
+            text-align: center;
             display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            padding: 3px 0;
-            border-bottom: 1px dotted #444;
-            color: #fff;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
         }
 
-        /* Bottom Status Bar */
+        /* Footer */
         #footer {
             background: var(--cm-dark);
             border-top: 1px solid var(--cm-gold);
-            padding: 4px 15px;
+            padding: 5px 15px;
             font-size: 11px;
             display: flex;
             justify-content: space-between;
@@ -153,50 +149,76 @@
 
     <div id="game-container">
         <div id="header">
-            <span>Be a Manager 2026 v1.0</span>
-            <span>13:45</span>
+            <span>BE A MANAGER 2026</span>
+            <span id="clock">12:00</span>
         </div>
 
         <div id="main-layout">
             <div id="sidebar">
-                <a href="#" class="menu-btn">NEW GAME</a>
+                <a href="#" class="menu-btn" onclick="startGame()">NEW GAME</a>
                 <a href="#" class="menu-btn">RESTORE GAME</a>
-                <div style="margin-top: auto;">
-                    <a href="#" class="menu-btn" style="border-color: #aa0000; color: #ffcccc;">EXIT</a>
-                </div>
             </div>
 
             <div id="content">
-                <div id="title-section">
+                <div id="title-banner">
                     <h1>BE A MANAGER 2026</h1>
+                    <div style="font-size: 14px; margin-top: 5px; color: #fff;">THE ULTIMATE SIMULATION</div>
                 </div>
 
                 <div id="dashboard">
-                    <div class="info-panel">
-                        <div class="panel-header">WORLD NEWS</div>
-                        <div class="data-row"><span>Transfer window closes in 2 days</span><span>NEWS</span></div>
-                        <div class="data-row"><span>Real Madrid lead the race for wonderkid</span><span>RUMOUR</span></div>
-                        <div class="data-row"><span>England manager under pressure</span><span>INT</span></div>
-                        <div class="data-row"><span>New stadium approved for London club</span><span>FINANCE</span></div>
+                    <div class="panel">
+                        <div class="panel-header">DID YOU KNOW?</div>
+                        <div id="fact-display" class="fact-box">
+                            Loading football trivia...
+                        </div>
                     </div>
 
-                    <div class="info-panel">
-                        <div class="panel-header">LEAGUE TABLES</div>
-                        <div class="data-row"><span>1. Manchester City</span><span>45 pts</span></div>
-                        <div class="data-row"><span>2. Liverpool</span><span>42 pts</span></div>
-                        <div class="data-row"><span>3. Arsenal</span><span>40 pts</span></div>
-                        <div class="data-row"><span>4. Chelsea</span><span>38 pts</span></div>
+                    <div class="panel">
+                        <div class="panel-header">PREVIOUS CHAMPIONS</div>
+                        <div style="padding: 10px; color: #fff; font-size: 12px;">
+                            <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>2024/25 Champions:</span> <span>Manchester City</span></div>
+                            <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Champions League:</span> <span>Real Madrid</span></div>
+                            <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>World Cup 2022:</span> <span>Argentina</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="footer">
-            <span>Monday 9th February 2026</span>
-            <span>No Manager Logged In</span>
+            <span id="date-display">Monday 9th February 2026</span>
+            <span>v1.0.4-BETA</span>
         </div>
     </div>
 
+    <script>
+        // Fun Facts Presets
+        const facts = [
+            "Dundee United has a 100% win record against FC Barcelona. They played 4 times and won all 4.",
+            "Gary Lineker played his entire professional career without ever receiving a yellow or red card.",
+            "The first World Cup in 1930 was played entirely in one city: Montevideo, Uruguay.",
+            "Giuseppe Bergomi played in 4 World Cups for Italy but never played in a single qualifying match.",
+            "Norway is the only national team in the world to have never lost against Brazil (2 wins, 2 draws).",
+            "Rio Ferdinand is the only player to have scored a Premier League goal under 7 different managers."
+        ];
+
+        let factIndex = 0;
+        function rotateFact() {
+            const display = document.getElementById('fact-display');
+            display.innerText = facts[factIndex];
+            factIndex = (factIndex + 1) % facts.length;
+        }
+
+        // Initial call and set interval
+        rotateFact();
+        setInterval(rotateFact, 30000); // 30 seconds
+
+        function startGame() {
+            alert("Starting New Game... Initializing Database...");
+            // We can add the navigation to the setup screen here next.
+        }
+    </script>
 </body>
 </html>
+
 
