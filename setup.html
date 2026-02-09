@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Be a Manager 2026 - Manager Profile</title>
     <style>
         :root {
@@ -46,7 +47,7 @@
             flex-grow: 1;
         }
 
-        /* Profile Sidebar (Contextual) */
+        /* Sidebar */
         #sidebar {
             width: 150px;
             background-color: var(--cm-dark);
@@ -87,31 +88,38 @@
         }
 
         label {
-            font-size: 12px;
+            font-size: 11px;
             margin-bottom: 5px;
             font-weight: bold;
             text-transform: uppercase;
+            color: var(--cm-gold);
         }
 
         input, select {
             background: #eee;
             border: 2px inset #fff;
-            padding: 5px;
+            padding: 6px;
             font-family: "Tahoma";
             font-size: 13px;
             color: #000;
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border: 2px solid var(--cm-gold);
         }
 
         .confirm-btn {
             background: var(--cm-light-green);
             color: #fff;
             border: 1px outset #aaa;
-            padding: 10px 20px;
+            padding: 12px 20px;
             cursor: pointer;
             font-weight: bold;
             font-size: 13px;
             margin-top: 20px;
             width: 100%;
+            text-transform: uppercase;
         }
 
         .confirm-btn:hover {
@@ -126,6 +134,10 @@
             text-decoration: underline;
             cursor: pointer;
         }
+
+        .back-link:hover {
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -138,7 +150,7 @@
         <div id="main-layout">
             <div id="sidebar">
                 <div style="font-weight:bold; color:var(--cm-gold); margin-bottom:10px;">INSTRUCTIONS</div>
-                Please enter your personal details and select the club you wish to manage for the 2025/26 season.
+                Please enter your personal details and select the club you wish to manage for the 2025/26 season. Your reputation will affect player morale.
             </div>
 
             <div id="content">
@@ -165,6 +177,10 @@
                             <option>Spanish</option>
                             <option>German</option>
                             <option>Italian</option>
+                            <option>Portuguese</option>
+                            <option>Dutch</option>
+                            <option>Argentine</option>
+                            <option>Brazilian</option>
                             <option>Other...</option>
                         </select>
                     </div>
@@ -213,24 +229,38 @@
 
     <script>
         function saveProfile() {
-            const profile = {
-                first: document.getElementById('firstName').value,
-                last: document.getElementById('surname').value,
-                nat: document.getElementById('nationality').value,
-                lvl: document.getElementById('level').value,
-                team: document.getElementById('team').value
-            };
+            // Get values from the form
+            const fName = document.getElementById('firstName').value.trim();
+            const lName = document.getElementById('surname').value.trim();
+            const nat = document.getElementById('nationality').value;
+            const lvl = document.getElementById('level').value;
+            const teamChoice = document.getElementById('team').value;
 
-            if(!profile.first || !profile.last) {
-                alert("Please enter a full name.");
+            // Simple validation
+            if (fName === "" || lName === "") {
+                alert("The Football Association requires a full name for your coaching license.");
                 return;
             }
 
-            // Save to browser storage for the next screens
-            localStorage.setItem('managerProfile', JSON.stringify(profile));
-            alert("Database Initialized. Welcome, Boss.");
-            // window.location.href = 'squad.html'; // This will be our next step
+            // Create Profile Object
+            const managerProfile = {
+                first: fName,
+                last: lName,
+                nationality: nat,
+                reputation: lvl,
+                team: teamChoice,
+                gameStarted: true
+            };
+
+            // Save to LocalStorage
+            localStorage.setItem('managerProfile', JSON.stringify(managerProfile));
+
+            // Feedback and Redirect
+            alert("Database Initialized. Good luck at " + teamChoice + ", Manager " + lName + "!");
+            window.location.href = 'game.html';
         }
     </script>
 </body>
 </html>
+
+
