@@ -4,103 +4,199 @@
     <meta charset="UTF-8">
     <title>Be a Manager 2026</title>
     <style>
+        :root {
+            --cm-dark: #00332c;
+            --cm-green: #004d40;
+            --cm-light-green: #00695c;
+            --cm-gold: #ffcc00;
+            --cm-border: #777;
+        }
+
         body {
-            background-color: #004d40; /* Classic CM Green */
-            color: #ffcc00; /* Gold text */
+            background-color: #000;
+            color: var(--cm-gold);
             font-family: "Tahoma", "Geneva", sans-serif;
             margin: 0;
             display: flex;
+            justify-content: center;
+            align-items: center;
             height: 100vh;
+        }
+
+        /* The "Game Window" feel - prevents it feeling like a giant empty website */
+        #game-container {
+            width: 1024px;
+            height: 768px;
+            background-color: var(--cm-green);
+            border: 3px outset var(--cm-border);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        /* Header Bar */
+        #header {
+            background: linear-gradient(to bottom, #444, #222);
+            color: white;
+            padding: 5px 15px;
+            font-size: 12px;
+            border-bottom: 2px solid var(--cm-gold);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #main-layout {
+            display: flex;
+            flex-grow: 1;
             overflow: hidden;
         }
 
-        /* Left Sidebar Navigation */
+        /* Sidebar Navigation */
         #sidebar {
-            width: 200px;
-            background-color: #00332c;
-            border-right: 2px solid #ffcc00;
-            padding: 20px 10px;
+            width: 160px;
+            background-color: var(--cm-dark);
+            border-right: 2px solid var(--cm-gold);
+            padding: 15px 5px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 4px;
         }
 
         .menu-btn {
-            background: #005b4f;
-            color: white;
-            border: 1px solid #ffcc00;
-            padding: 10px;
-            text-align: left;
+            background: var(--cm-light-green);
+            color: #fff;
+            border: 1px outset #888;
+            padding: 8px 10px;
+            text-align: center;
             cursor: pointer;
             font-weight: bold;
             text-decoration: none;
-            font-size: 0.9em;
+            font-size: 11px;
+            text-transform: uppercase;
         }
 
         .menu-btn:hover {
-            background: #ffcc00;
-            color: #00332c;
+            background: var(--cm-gold);
+            color: var(--cm-dark);
         }
 
         /* Main Content Area */
-        #main-stage {
+        #content {
             flex-grow: 1;
-            padding: 40px;
-            background: radial-gradient(circle, #00695c 0%, #004d40 100%);
+            padding: 0;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-shadow: 2px 2px #000;
+        }
+
+        /* Top Title Section */
+        #title-section {
+            background: var(--cm-dark);
+            padding: 20px;
+            border-bottom: 1px solid var(--cm-gold);
+            text-align: center;
         }
 
         h1 {
-            font-size: 4em;
-            margin-bottom: 0;
-            letter-spacing: 2px;
+            margin: 0;
+            font-size: 42px;
             font-style: italic;
+            letter-spacing: -1px;
+            text-shadow: 2px 2px #000;
         }
 
-        .version {
-            font-size: 1.2em;
-            margin-bottom: 50px;
+        /* World News / Info Panels (Fills the empty space) */
+        #dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            padding: 20px;
+            flex-grow: 1;
         }
 
-        .status-bar {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            background: #00332c;
-            border-top: 1px solid #ffcc00;
-            padding: 5px 20px;
-            font-size: 0.8em;
-            color: #ccc;
+        .info-panel {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 204, 0, 0.3);
+            padding: 10px;
+        }
+
+        .panel-header {
+            background: var(--cm-dark);
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--cm-gold);
+            margin-bottom: 10px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            padding: 3px 0;
+            border-bottom: 1px dotted #444;
+            color: #fff;
+        }
+
+        /* Bottom Status Bar */
+        #footer {
+            background: var(--cm-dark);
+            border-top: 1px solid var(--cm-gold);
+            padding: 4px 15px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
         }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <a href="#" class="menu-btn">NEW GAME</a>
-        <a href="#" class="menu-btn">RESTORE GAME</a>
-        <a href="#" class="menu-btn">GAME SETTINGS</a>
-        <a href="#" class="menu-btn">EDITOR</a>
-        <a href="#" class="menu-btn">CREDITS</a>
-        <div style="margin-top: auto;">
-            <a href="#" class="menu-btn" style="border-color: red; color: #ff9999;">EXIT</a>
+    <div id="game-container">
+        <div id="header">
+            <span>Be a Manager 2026 v1.0</span>
+            <span>13:45</span>
         </div>
-    </div>
 
-    <div id="main-stage">
-        <h1>BE A MANAGER</h1>
-        <div class="version">2026 EDITION</div>
-        
-        <p style="color: white; text-shadow: none;">Select an option from the sidebar to begin your journey.</p>
-    </div>
+        <div id="main-layout">
+            <div id="sidebar">
+                <a href="#" class="menu-btn">NEW GAME</a>
+                <a href="#" class="menu-btn">RESTORE GAME</a>
+                <div style="margin-top: auto;">
+                    <a href="#" class="menu-btn" style="border-color: #aa0000; color: #ffcccc;">EXIT</a>
+                </div>
+            </div>
 
-    <div class="status-bar">
-        Sunday 8th February 2026 | No Game Loaded
+            <div id="content">
+                <div id="title-section">
+                    <h1>BE A MANAGER 2026</h1>
+                </div>
+
+                <div id="dashboard">
+                    <div class="info-panel">
+                        <div class="panel-header">WORLD NEWS</div>
+                        <div class="data-row"><span>Transfer window closes in 2 days</span><span>NEWS</span></div>
+                        <div class="data-row"><span>Real Madrid lead the race for wonderkid</span><span>RUMOUR</span></div>
+                        <div class="data-row"><span>England manager under pressure</span><span>INT</span></div>
+                        <div class="data-row"><span>New stadium approved for London club</span><span>FINANCE</span></div>
+                    </div>
+
+                    <div class="info-panel">
+                        <div class="panel-header">LEAGUE TABLES</div>
+                        <div class="data-row"><span>1. Manchester City</span><span>45 pts</span></div>
+                        <div class="data-row"><span>2. Liverpool</span><span>42 pts</span></div>
+                        <div class="data-row"><span>3. Arsenal</span><span>40 pts</span></div>
+                        <div class="data-row"><span>4. Chelsea</span><span>38 pts</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="footer">
+            <span>Monday 9th February 2026</span>
+            <span>No Manager Logged In</span>
+        </div>
     </div>
 
 </body>
 </html>
+
