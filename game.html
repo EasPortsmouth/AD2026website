@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Be a Manager 2026 - Dashboard</title>
+    <style>
+        :root {
+            --cm-dark: #00332c;
+            --cm-green: #004d40;
+            --cm-gold: #ffcc00;
+            --cm-border: #777;
+            --cm-row-even: #005b4f;
+            --cm-row-odd: #004d40;
+        }
+
+        body {
+            background-color: #111;
+            color: var(--cm-gold);
+            font-family: "Tahoma", sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            width: 1024px;
+            height: 750px;
+            background-color: var(--cm-green);
+            border: 3px outset var(--cm-border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        #header {
+            background: linear-gradient(to bottom, #333, #111);
+            color: #fff;
+            padding: 5px 15px;
+            font-size: 12px;
+            border-bottom: 2px solid var(--cm-gold);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Main Layout */
+        #layout { display: flex; flex-grow: 1; overflow: hidden; }
+
+        /* Sidebar Nav */
+        #sidebar {
+            width: 160px;
+            background-color: var(--cm-dark);
+            border-right: 2px solid var(--cm-gold);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .nav-btn {
+            background: var(--cm-green);
+            color: white;
+            border: 1px outset #888;
+            padding: 8px;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .nav-btn:hover, .nav-btn.active { background: var(--cm-gold); color: var(--cm-dark); }
+
+        /* Content */
+        #content-area { flex-grow: 1; padding: 20px; overflow-y: auto; }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(0,0,0,0.2); }
+        th { background: var(--cm-dark); color: var(--cm-gold); text-align: left; padding: 8px; border: 1px solid #555; }
+        td { padding: 6px 8px; border: 1px solid #444; color: white; }
+        tr:nth-child(even) { background: var(--cm-row-even); }
+
+        .stat-badge { font-weight: bold; color: var(--cm-gold); }
+
+        /* Formation Selects */
+        .tactic-row { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #555; }
+        select { background: #eee; border: 1px solid #000; font-size: 12px; }
+
+        h2 { border-bottom: 1px solid var(--cm-gold); padding-bottom: 5px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="header">
+            <span id="mgr-welcome">Welcome, Manager</span>
+            <span id="game-date">Monday 9th Feb 2026</span>
+        </div>
+
+        <div id="layout">
+            <div id="sidebar">
+                <div class="nav-btn active" onclick="showScreen('squad')">SQUAD</div>
+                <div class="nav-btn" onclick="showScreen('tactics')">TACTICS</div>
+                <div class="nav-btn" onclick="showScreen('table')">LEAGUE TABLE</div>
+                <div class="nav-btn" onclick="showScreen('fixtures')">FIXTURES</div>
+                <div style="margin-top:auto" class="nav-btn" style="background:#800">CONTINUE</div>
+            </div>
+
+            <div id="content-area">
+                
+                <div id="screen-squad" class="screen active">
+                    <h2 id="team-title">Club Squad</h2>
+                    <table id="squad-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Pos</th>
+                                <th>PAC</th>
+                                <th>SHO</th>
+                                <th>PAS</th>
+                                <th>DRI</th>
+                                <th>DEF</th>
+                                <th>PHY</th>
+                                <th>OVR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="squad-list">
+                            </tbody>
+                    </table>
+                </div>
+
+                <div id="screen-tactics" class="screen">
+                    <h2>First XI Selection</h2>
+                    <div id="formation-list">
+                        </div>
+                </div>
+
+                <div id="screen-table" class="screen">
+                    <h2>Premier League Standings</h2>
+                    <table id="league-table">
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Team</th>
+                                <th>P</th>
+                                <th>W</th>
+                                <th>D</th>
+                                <th>L</th>
+                                <th>Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody id="league-body"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. DATA INITIALIZATION
+        const profile = JSON.parse(localStorage.getItem('managerProfile')) || {first: "Guest", last: "Manager", team: "Arsenal"};
+        document.getElementById('mgr-welcome').innerText = `Manager: ${profile.first} ${profile.last} (${profile.team})`;
+        document.getElementById('team-title').innerText = `${profile.team} Squad`;
+
+        // 6-Stat System + Potential
+        const players = [
+            { name: "M. Ødegaard", pos: "CAM", pac: 82, sho: 81, pas: 90, dri: 89, def: 58, phy: 64, pot: 91 },
+            { name: "Bukayo Saka", pos: "RW", pac: 86, sho: 83, pas: 82, dri: 87, def: 45, phy: 68, pot: 92 },
+            { name: "William Saliba", pos: "CB", pac: 82, sho: 39, pas: 72, dri: 71, def: 87, phy: 82, pot: 92 },
+            { name: "David Raya", pos: "GK", pac: 84, sho: 80, pas: 85, dri: 83, def: 40, phy: 77, pot: 88 },
+            { name: "Declan Rice", pos: "CDM", pac: 81, sho: 75, pas: 82, dri: 83, def: 86, phy: 83, pot: 90 }
+        ];
+
+        // 2. LOGIC: CALCULATE OVR (Sum of 5 main outfield stats / 5)
+        function calculateOvr(p) {
+            // For outfielders, we usually average the main 6. 
+            return Math.round((p.pac + p.sho + p.pas + p.dri + p.def + p.phy) / 6);
+        }
+
+        // 3. RENDER SQUAD
+        function renderSquad() {
+            const list = document.getElementById('squad-list');
+            players.forEach(p => {
+                const ovr = calculateOvr(p);
+                list.innerHTML += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${p.pos}</td>
+                        <td>${p.pac}</td>
+                        <td>${p.sho}</td>
+                        <td>${p.pas}</td>
+                        <td>${p.dri}</td>
+                        <td>${p.def}</td>
+                        <td>${p.phy}</td>
+                        <td class="stat-badge">${ovr}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 4. TACTICS SYSTEM (GK: Select Player...)
+        const positions = ["GK", "RB", "RCB", "LCB", "LB", "CDM", "CM", "CM", "RW", "LW", "ST"];
+        function renderTactics() {
+            const container = document.getElementById('formation-list');
+            positions.forEach(pos => {
+                let options = players.map(p => `<option>${p.name}</option>`).join('');
+                container.innerHTML += `
+                    <div class="tactic-row">
+                        <strong>${pos}</strong>
+                        <select><option>Select Player...</option>${options}</select>
+                    </div>
+                `;
+            });
+        }
+
+        // 5. NAVIGATION
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('screen-' + screenId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Initialize Game
+        renderSquad();
+        renderTactics();
+    </script>
+</body>
+</html>
