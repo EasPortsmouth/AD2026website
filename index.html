@@ -150,13 +150,13 @@
     <div id="game-container">
         <div id="header">
             <span>BE A MANAGER 2026</span>
-            <span id="clock">12:00</span>
+            <span id="clock">--:--</span>
         </div>
 
         <div id="main-layout">
             <div id="sidebar">
                 <a href="#" class="menu-btn" onclick="startGame()">NEW GAME</a>
-                <a href="#" class="menu-btn">RESTORE GAME</a>
+                <a href="#" class="menu-btn" onclick="alert('No save game found.')">RESTORE GAME</a>
             </div>
 
             <div id="content">
@@ -192,6 +192,16 @@
     </div>
 
     <script>
+        // Real-time Clock logic
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ":" + 
+                            now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
         // Fun Facts Presets
         const facts = [
             "Dundee United has a 100% win record against FC Barcelona. They played 4 times and won all 4.",
@@ -209,16 +219,15 @@
             factIndex = (factIndex + 1) % facts.length;
         }
 
-        // Initial call and set interval
         rotateFact();
-        setInterval(rotateFact, 30000); // 30 seconds
+        setInterval(rotateFact, 30000); 
 
+        // NAVIGATION LOGIC
         function startGame() {
-            alert("Starting New Game... Initializing Database...");
-            // We can add the navigation to the setup screen here next.
+            // No alert needed for faster transition, just go straight to setup
+            window.location.href = 'setup.html';
         }
     </script>
 </body>
 </html>
-
 
