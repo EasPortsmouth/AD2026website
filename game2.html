@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NEON PONG: PRO-TECH</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; position: fixed; font-family: 'Orbitron', sans-serif; }
+        canvas { display: block; }
+        .ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; align-items: center; }
+        .scoreboard { display: flex; justify-content: space-between; width: 85%; margin-top: calc(20px + env(safe-area-inset-top)); text-transform: uppercase; }
+        .score-num { font-size: 38px; font-weight: 900; }
+        #player-num { color: #00f2fe; text-shadow: 0 0 10px #00f2fe; }
+        #cpu-num { color: #ff0057; text-shadow: 0 0 10px #ff0057; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.9); z-index: 100; }
+        #menu-content { width: 80%; max-width: 260px; text-align: center; }
+        .menu-title { color: #fff; font-size: 16px; margin-bottom: 15px; letter-spacing: 3px; }
+        .win-msg { font-size: 24px; margin-bottom: 15px; font-weight: 900; display: none; }
+        .difficulty-row { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        .btn { padding: 12px; font-family: 'Orbitron'; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.3); color: #fff; cursor: pointer; text-transform: uppercase; font-size: 11px; border-radius: 4px; }
+        .btn-casual { border-color: #00ff88; color: #00ff88; }
+        .btn-pro { border-color: #ffeb3b; color: #ffeb3b; }
+        .btn-insane { border-color: #ff0057; color: #ff0057; }
+        #countdown { font-size: 70px; color: #fff; display: none; font-weight: 900; }
+    </style>
+</head>
+<body>
+
+    <div class="ui-container">
+        <div class="scoreboard">
+            <div id="cpu-num" class="score-num">0</div>
+            <div id="player-num" class="score-num">0</div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="menu-content">
+            <div id="win-display" class="win-msg"></div>
+            <div id="main-menu">
+                <div class="menu-title">NEON_PONG</div>
+                <div class="difficulty-row">
+                    <button class="btn btn-casual" onclick="setDifficulty('casual')">Lahko</button>
+                    <button class="btn btn-pro" onclick="setDifficulty('pro')">Srednje</button>
+                    <button class="btn btn-insane" onclick="setDifficulty('insane')">Nemogoče(VSO SREČO)</button>
+                </div>
+            </div>
+        </div>
+        <div id="countdown"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const overlay = document.getElementById("overlay");
+        const mainMenu = document.getElementById("main-menu");
+        const countdownEl = document.getElementById("countdown");
+        const winDisplay = document.getElementById("win-display");
+        
+        let gameActive = false, pScore = 0, cScore = 0;
+        let diffSettings = { cpuSpeed: 0.06, ballMaxSpeed: 7, winScore: 5 };
+
+        const paddleW = 85, paddleH = 10;
+        let player = { x: 0, y: 0, color: '#00f2fe' };
+        let cpu = { x: 0, y: 0, color: '#ff0057' };
+        let ball = { x: 0, y: 0, dx: 0, dy: 0, speed: 0, radius: 7, inPlay: false };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            player.x = canvas.width/2 - paddleW/2;
+            player.y = canvas.height - 80;
+            cpu.x = canvas.width/2 - paddleW/2;
+            cpu.y = 70;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function setDifficulty(lvl) {
+            pScore = 0; cScore = 0;
+            document.getElementById("player-num").innerText = "0";
+            document.getElementById("cpu-num").innerText = "0";
+            if(lvl === 'casual') diffSettings = { cpuSpeed: 0.08, ballMaxSpeed: 7, winScore: 5 };
+            if(lvl === 'pro') diffSettings = { cpuSpeed: 0.12, ballMaxSpeed: 10, winScore: 10 };
+            if(lvl === 'insane') diffSettings = { cpuSpeed: 0.2, ballMaxSpeed: 14, winScore: 15 };
+            mainMenu.style.display = "none";
+            winDisplay.style.display = "none";
+            countdownEl.style.display = "block";
+            startSequence();
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.inPlay = false;
+            // Forced angle serve: 30-60 degrees off center
+            const angle = (Math.random() * 30 + 30) * (Math.PI / 180);
+            const dirX = Math.random() > 0.5 ? 1 : -1;
+            const dirY = Math.random() > 0.5 ? 1 : -1;
+            ball.speed = 4; // Slow serve
+            ball.dx = Math.sin(angle) * ball.speed * dirX;
+            ball.dy = Math.cos(angle) * ball.speed * dirY;
+        }
+
+        function startSequence() {
+            let counts = ["3", "2", "1", "GO"];
+            let i = 0;
+            let timer = setInterval(() => {
+                if(i < counts.length) { countdownEl.innerText = counts[i++]; } 
+                else { clearInterval(timer); overlay.style.display = "none"; countdownEl.style.display = "none"; gameActive = true; resetBall(); requestAnimationFrame(loop); }
+            }, 700);
+        }
+
+        function move(e) {
+            let x = e.touches ? e.touches[0].clientX : e.clientX;
+            player.x = x - paddleW/2;
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - paddleW) player.x = canvas.width - paddleW;
+        }
+        window.addEventListener("mousemove", move);
+        window.addEventListener("touchmove", (e) => { move(e); e.preventDefault(); }, {passive:false});
+
+        function update() {
+            if(!gameActive) return;
+            ball.x += ball.dx; ball.y += ball.dy;
+
+            // CPU AI: Always tries to center itself under the ball
+            let targetX = ball.x - paddleW / 2;
+            cpu.x += (targetX - cpu.x) * diffSettings.cpuSpeed;
+
+            if(ball.x < ball.radius || ball.x > canvas.width - ball.radius) ball.dx *= -1;
+
+            let paddle = (ball.y > canvas.height/2) ? player : cpu;
+            if(ball.y + ball.radius > paddle.y && ball.y - ball.radius < paddle.y + paddleH && ball.x > paddle.x && ball.x < paddle.x + paddleW) {
+                if(!ball.inPlay) { ball.inPlay = true; ball.speed = diffSettings.ballMaxSpeed; }
+                let hitPoint = (ball.x - (paddle.x + paddleW/2)) / (paddleW/2);
+                ball.dy = (ball.y > canvas.height/2 ? -1 : 1) * ball.speed * Math.cos(hitPoint * 0.7);
+                ball.dx = ball.speed * Math.sin(hitPoint * 0.7);
+            }
+
+            if(ball.y < 0 || ball.y > canvas.height) {
+                gameActive = false;
+                if(ball.y < 0) pScore++; else cScore++;
+                document.getElementById("player-num").innerText = pScore;
+                document.getElementById("cpu-num").innerText = cScore;
+                if (pScore >= diffSettings.winScore || cScore >= diffSettings.winScore) {
+                    winDisplay.innerText = pScore >= diffSettings.winScore ? "ZMAGA" : "PORAZ";
+                    winDisplay.style.color = pScore >= diffSettings.winScore ? "#00f2fe" : "#ff0057";
+                    winDisplay.style.display = "block"; mainMenu.style.display = "block"; overlay.style.display = "flex";
+                } else { overlay.style.display = "flex"; countdownEl.style.display = "block"; setTimeout(startSequence, 500); }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = player.color; ctx.fillRect(player.x, player.y, paddleW, paddleH);
+            ctx.fillStyle = cpu.color; ctx.fillRect(cpu.x, cpu.y, paddleW, paddleH);
+        }
+
+        function loop() { update(); draw(); if(gameActive) requestAnimationFrame(loop); }
+    </script>
+</body>
+</html>
