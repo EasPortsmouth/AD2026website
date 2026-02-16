@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Neon Volley: Skill & Balance</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050505; position: fixed; font-family: 'Orbitron', sans-serif; touch-action: none; }
+        canvas { display: block; }
+        .ui { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; align-items: center; color: #fff; pointer-events: none; z-index: 10; }
+        .score { font-size: 32px; font-weight: 900; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; text-align: center; }
+        #countdown { font-size: 50px; color: #fff; font-weight: 900; }
+        .controls { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 110; }
+        .btn { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: 900; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div class="ui">
+        <div style="text-align:center; color:#00f2fe;"><div id="p-score" class="score">0</div><div style="font-size:10px">YOU</div></div>
+        <div style="text-align:center; color:#ff0057;"><div id="c-score" class="score">0</div><div style="font-size:10px">CPU</div></div>
+    </div>
+
+    <div id="overlay">
+        <div id="win-display" style="color:white; font-size:24px; margin-bottom:20px; font-weight:900;"></div>
+        <div id="countdown">Pripravljeni?</div>
+        <button id="restart-btn" style="display:none; padding:15px 40px; font-family:'Orbitron'; background:#fff; border:none; font-weight:900; border-radius:30px;" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+    <div class="controls">
+        <div style="display: flex; gap: 20px;">
+            <div class="btn" id="btn-left">LEFT</div>
+            <div class="btn" id="btn-right">RIGHT</div>
+        </div>
+        <div class="btn" id="btn-jump" style="border-color:#ffeb3b; color:#ffeb3b;">JUMP</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const overlay = document.getElementById("overlay");
+        const countdownEl = document.getElementById("countdown");
+
+        let gameActive = false, pScore = 0, cScore = 0;
+        const gravity = 0.12, airDrag = 0.992, groundPadding = 120;
+
+        let player = { x: 0, y: 0, w: 32, h: 42, dx: 0, dy: 0, speed: 7.5, jumping: false };
+        let cpu = { x: 0, y: 0, w: 32, h: 42, dx: 0, dy: 0, speed: 4.5, friction: 0.85, jumping: false, reactionTimer: 0, targetX: 0 };
+        let ball = { x: 0, y: -100, radius: 18, dx: 0, dy: 0 };
+        let net = { x: 0, y: 0, w: 8, h: 110 };
+
+        let moveLeft = false, moveRight = false;
+
+        function resize() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            player.y = canvas.height - groundPadding - player.h;
+            cpu.y = player.y;
+            net.x = canvas.width/2 - net.w/2; net.y = canvas.height - groundPadding - net.h;
+        }
+        window.addEventListener('resize', resize); resize();
+
+        function startSequence() {
+            gameActive = false;
+            overlay.style.display = "flex";
+            countdownEl.style.display = "block";
+            document.getElementById('win-display').innerText = "";
+            let counts = ["3", "2", "1", "GREMO"];
+            let i = 0;
+            let timer = setInterval(() => {
+                if(i < counts.length) countdownEl.innerText = counts[i++];
+                else { clearInterval(timer); overlay.style.display = "none"; gameActive = true; resetBall(); requestAnimationFrame(loop); }
+            }, 700);
+        }
+
+        function resetBall() {
+            ball.x = (pScore <= cScore) ? canvas.width * 0.2 : canvas.width * 0.8;
+            ball.y = -60; ball.dx = 0; ball.dy = 0.1;
+            player.x = 80; cpu.x = canvas.width - 112; cpu.dx = 0;
+        }
+
+        const setupBtn = (id, start) => {
+            const el = document.getElementById(id);
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); start(true); });
+            el.addEventListener('touchend', (e) => { e.preventDefault(); start(false); });
+        };
+        setupBtn('btn-left', (v) => moveLeft = v);
+        setupBtn('btn-right', (v) => moveRight = v);
+        setupBtn('btn-jump', (v) => { if(v && !player.jumping) { player.dy = -7.2; player.jumping = true; } });
+
+        function update() {
+            if(!gameActive) return;
+
+            // Player Logic
+            if(moveLeft) player.x -= player.speed;
+            if(moveRight) player.x += player.speed;
+            player.x = Math.max(0, Math.min(net.x - player.w, player.x));
+            player.y += player.dy; player.dy += gravity;
+            if(player.y > canvas.height - groundPadding - player.h) { player.y = canvas.height - groundPadding - player.h; player.dy = 0; player.jumping = false; }
+
+            // Ball Logic
+            ball.x += ball.dx; ball.y += ball.dy; ball.dy += gravity; ball.dx *= airDrag;
+            if(ball.x < ball.radius) { ball.dx = 0.8; ball.x = ball.radius; } 
+            else if (ball.x > canvas.width - ball.radius) { ball.dx = -0.8; ball.x = canvas.width - ball.radius; }
+
+            // CPU AI Logic
+            let cpuCenter = cpu.x + cpu.w/2;
+            cpu.reactionTimer--;
+            if (cpu.reactionTimer <= 0) {
+                cpu.reactionTimer = 12 + Math.random() * 18;
+                cpu.targetX = ball.x + (Math.random() * 60 - 30);
+            }
+
+            let targetX = cpu.targetX || ball.x;
+            if (ball.x > net.x + 40) {
+                if (cpuCenter < targetX - 15) cpu.dx += 0.28;
+                else if (cpuCenter > targetX + 15) cpu.dx -= 0.28;
+                if (ball.y > cpu.y - 95 && ball.y < cpu.y - 10 && Math.abs(cpuCenter - ball.x) < 32 && !cpu.jumping && Math.random() > 0.25) {
+                    cpu.dy = -6.1; cpu.jumping = true;
+                }
+            } else {
+                let homeBase = canvas.width * 0.75;
+                if (cpuCenter < homeBase) cpu.dx += 0.12; else cpu.dx -= 0.12;
+            }
+
+            cpu.dx *= cpu.friction;
+            cpu.dx = Math.max(-4.2, Math.min(4.2, cpu.dx));
+            cpu.x += cpu.dx;
+            cpu.y += cpu.dy; cpu.dy += gravity;
+            cpu.x = Math.max(net.x + net.w, Math.min(canvas.width - cpu.w, cpu.x));
+            if(cpu.y > canvas.height - groundPadding - cpu.h) { cpu.y = canvas.height - groundPadding - cpu.h; cpu.dy = 0; cpu.jumping = false; }
+
+            // COLLISION RE-FIX: Dynamic Hit Logic
+            [player, cpu].forEach(obj => {
+                if(ball.x + ball.radius > obj.x && ball.x - ball.radius < obj.x + obj.w &&
+                   ball.y + ball.radius > obj.y && ball.y - ball.radius < obj.y + obj.h) {
+                    
+                    // hitOffset is -1 to 1 based on where the ball hits the top of the player
+                    let hitOffset = (ball.x - (obj.x + obj.w / 2)) / (obj.w / 2); 
+                    let basePush = (obj === player) ? 0.7 : -0.7; // Gentle forward bias
+                    
+                    ball.dx = (hitOffset * 2.8) + basePush; // More flick on the edges, less in the middle
+                    ball.dy = -7.6; // Consistent upward pop
+                    ball.y = obj.y - ball.radius - 2;
+                }
+            });
+
+            if(ball.x + ball.radius > net.x && ball.x - ball.radius < net.x + net.w && ball.y > net.y) ball.dx *= -0.4;
+            
+            if(ball.y > canvas.height - groundPadding) {
+                if(ball.x < net.x) cScore++; else pScore++;
+                document.getElementById('p-score').innerText = pScore;
+                document.getElementById('c-score').innerText = cScore;
+                gameActive = false;
+                if(pScore >= 7 || cScore >= 7) {
+                    document.getElementById('win-display').innerText = pScore >= 7 ? "ZMAGA!" : "ZMAGA NASPROTNIKA";
+                    document.getElementById('restart-btn').style.display = "block";
+                    overlay.style.display = "flex";
+                    countdownEl.style.display = "none";
+                } else { setTimeout(startSequence, 800); }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#050505"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = "#111"; ctx.fillRect(0, canvas.height - groundPadding, canvas.width, groundPadding);
+            ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(net.x, net.y, net.w, net.h);
+            
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = "#00f2fe"; ctx.shadowColor = "#00f2fe"; ctx.fillRect(player.x, player.y, player.w, player.h);
+            ctx.fillStyle = "#ff0057"; ctx.shadowColor = "#ff0057"; ctx.fillRect(cpu.x, cpu.y, cpu.w, cpu.h);
+            ctx.fillStyle = "#fff"; ctx.shadowColor = "#fff"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 0;
+
+            update(); if(gameActive) requestAnimationFrame(draw);
+        }
+        function loop() { draw(); }
+        startSequence();
+    </script>
+</body>
+</html>
