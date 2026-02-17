@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon 2v2: Championship Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+        body { margin: 0; background: #000; font-family: 'Orbitron', sans-serif; overflow: hidden; touch-action: none; }
+        canvas { display: block; background: #011201; border-bottom: 4px solid #00f2fe; }
+        .ui { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; pointer-events: none; z-index: 10; font-size: 18px; text-shadow: 0 0 10px #00f2fe; }
+        .timer { position: absolute; top: 40px; width: 100%; text-align: center; color: #00f2fe; font-size: 14px; z-index: 10; }
+        .controls { position: absolute; bottom: 15px; width: 100%; display: flex; justify-content: space-around; align-items: center; z-index: 10; }
+        .joystick-area { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border: 2px solid #00f2fe; border-radius: 50%; position: relative; }
+        .stick { width: 30px; height: 30px; background: #fff; border-radius: 50%; position: absolute; top: 25px; left: 25px; }
+        .btns { display: flex; gap: 10px; }
+        .action-btn { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #00f2fe; color: #00f2fe; display: flex; justify-content: center; align-items: center; font-size: 10px; background: rgba(0,242,254,0.1); font-weight: 900; }
+        #restartBtn { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 30px; background: #00f2fe; color: #000; border: none; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; z-index: 20; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="ui" id="msg">NEON 2v2</div>
+<div class="timer" id="timer">02:00</div>
+<button id="restartBtn" onclick="fullReset()">RESTART MATCH</button>
+<canvas id="game"></canvas>
+
+<div class="controls">
+    <div class="joystick-area" id="joyArea"><div class="stick" id="stick"></div></div>
+    <div class="btns">
+        <div class="action-btn" id="btnPass">PASS</div>
+        <div class="action-btn" id="btnShoot">SHOOT</div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const msgEl = document.getElementById('msg');
+const timerEl = document.getElementById('timer');
+const restartBtn = document.getElementById('restartBtn');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight * 0.75;
+
+let score = { blue: 0, red: 0 };
+let input = { x: 0, y: 0 };
+let freezeTimer = 120; 
+let matchTime = 120; 
+let isAddedTime = false;
+let gameOver = false;
+let kickoffSide = 'blue';
+let recoveryTimer = 0;
+
+const GOAL_H = canvas.height * 0.35;
+const GOAL_Y = (canvas.height - GOAL_H) / 2;
+const ball = { x: canvas.width/2, y: canvas.height/2, r: 8, dx: 0, dy: 0, friction: 0.96, owner: null };
+
+class Player {
+    constructor(x, y, team, role, isUser = false) {
+        this.x = x; this.y = y; this.team = team; this.role = role; this.isUser = isUser;
+        this.r = 18; 
+        this.speed = isUser ? 2.5 : 1.6; 
+        this.kickCD = 0; this.stumble = 0; this.thinkTimer = 0;
+        this.reactionDelay = 0; // Nerf for teammate
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = this.team === 'blue' ? '#00f2fe' : '#ff0057';
+        ctx.globalAlpha = (freezeTimer > 0 && !this.isUser && ball.owner !== this) ? 0.3 : (this.stumble > 0 ? 0.4 : 1);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (this.isUser) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); }
+    }
+
+    update() {
+        if (gameOver) return;
+        if (this.stumble > 0) { this.stumble--; return; }
+        if (this.kickCD > 0) this.kickCD--;
+        if (this.reactionDelay > 0) { this.reactionDelay--; }
+
+        if (this.isUser) {
+            this.x += input.x * this.speed;
+            this.y += input.y * this.speed;
+        } else {
+            if (freezeTimer > 0 && ball.owner !== this) return;
+            if (ball.owner === this) {
+                this.thinkTimer++;
+                this.aiHandleBall();
+            } else {
+                this.thinkTimer = 0;
+                this.aiOffBall();
+            }
+        }
+        if (freezeTimer > 0) {
+            const mid = canvas.width / 2;
+            if (this.team === 'blue' && this.x > mid - 25) this.x = mid - 25;
+            if (this.team === 'red' && this.x < mid + 25) this.x = mid + 25;
+        }
+        this.clamp();
+    }
+
+    aiHandleBall() {
+        const oppGoalX = this.team === 'blue' ? canvas.width : 0;
+        const distToGoal = Math.abs(this.x - oppGoalX);
+        const teammate = players.find(p => p.team === this.team && p !== this);
+
+        if (this.thinkTimer > 60) {
+            if (distToGoal < canvas.width * 0.35) {
+                this.kick(oppGoalX, canvas.height/2, 16);
+                recoveryTimer = 100;
+                return;
+            }
+            if (teammate && Math.random() < 0.01) {
+                this.kick(teammate.x, teammate.y, 11);
+                return;
+            }
+        }
+        let dir = (this.team === 'blue') ? 1 : -1;
+        this.x += dir * (this.speed * 0.6);
+        this.y += Math.sin(Date.now() / 800) * 1.0; 
+    }
+
+    aiOffBall() {
+        const myGoalX = this.team === 'blue' ? 0 : canvas.width;
+        if (recoveryTimer > 0 && (!ball.owner || ball.owner.team !== this.team)) {
+            let targetX = (this.role === 'defender') ? (myGoalX + canvas.width/2.5)/2 : myGoalX + (this.team === 'blue' ? 60 : -60);
+            this.moveToward(targetX, canvas.height/2, this.speed * 0.8);
+            return;
+        }
+
+        // TEAMMATE NERF: If teammate is chasing, make him slower or hesitate
+        let spdMult = (this.team === 'blue' && !this.isUser) ? 0.75 : 0.85;
+        
+        if (ball.owner && ball.owner.team === this.team) {
+            let targetX = (this.team === 'blue') ? ball.x + 90 : ball.x - 90;
+            let targetY = (ball.y < canvas.height * 0.5) ? canvas.height * 0.7 : canvas.height * 0.3;
+            this.moveToward(targetX, targetY, this.speed * 0.7);
+        } else {
+            this.moveToward(ball.x, ball.y, this.speed * spdMult);
+        }
+    }
+
+    moveToward(tx, ty, spd) {
+        let dx = tx - this.x, dy = ty - this.y;
+        let d = Math.sqrt(dx*dx + dy*dy);
+        if (d > 5) {
+            this.x += (dx/d) * spd;
+            this.y += (dy/d) * spd;
+        }
+    }
+
+    kick(tx, ty, pwr) {
+        const ang = Math.atan2(ty - this.y, tx - this.x);
+        ball.owner = null;
+        ball.dx = Math.cos(ang) * pwr;
+        ball.dy = Math.sin(ang) * pwr;
+        this.kickCD = 45;
+        this.thinkTimer = 0;
+        if (freezeTimer > 0) freezeTimer = 0;
+    }
+
+    clamp() {
+        this.x = Math.max(this.r, Math.min(canvas.width - this.r, this.x));
+        this.y = Math.max(this.r, Math.min(canvas.height - this.r, this.y));
+    }
+}
+
+let players = [
+    new Player(0, 0, 'blue', 'attacker', true),
+    new Player(0, 0, 'blue', 'defender'),
+    new Player(0, 0, 'red', 'attacker'),
+    new Player(0, 0, 'red', 'defender')
+];
+
+function updateTimer() {
+    if (gameOver) return;
+    if (freezeTimer <= 0) {
+        matchTime -= 1/60;
+        if (matchTime <= 0) {
+            if (score.blue === score.red && !isAddedTime) {
+                isAddedTime = true;
+                matchTime = 15; // 15 seconds added time
+                msgEl.innerText = "ADDED TIME!";
+            } else if (matchTime <= 0) {
+                matchTime = 0;
+                gameOver = true;
+                msgEl.innerText = "FINAL SCORE";
+                restartBtn.style.display = 'block';
+            }
+        }
+    }
+    let m = Math.floor(Math.max(0, matchTime) / 60);
+    let s = Math.floor(Math.max(0, matchTime) % 60);
+    timerEl.innerText = `${isAddedTime ? '+' : ''}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+function physics() {
+    if (gameOver) return;
+    if (recoveryTimer > 0) recoveryTimer--;
+    if (freezeTimer > 0) {
+        freezeTimer--;
+        msgEl.innerText = `READY... ${Math.ceil(freezeTimer/60)}`;
+    } else if (!isAddedTime) {
+        msgEl.innerText = `BLUE ${score.blue} - ${score.red} RED`;
+    }
+
+    if (!ball.owner) {
+        ball.x += ball.dx; ball.y += ball.dy;
+        ball.dx *= ball.friction; ball.dy *= ball.friction;
+        players.forEach(p => {
+            if (p.kickCD > 0 || p.stumble > 0 || p.reactionDelay > 0) return;
+            if (Math.sqrt((ball.x-p.x)**2 + (ball.y-p.y)**2) < p.r + ball.r) {
+                ball.owner = p; ball.dx = 0; ball.dy = 0;
+                // Give CPU a tiny reaction headstart when ball is loose
+                if (p.team === 'blue' && !p.isUser) p.reactionDelay = 15;
+            }
+        });
+    } else {
+        const side = ball.owner.team === 'blue' ? 1 : -1;
+        ball.x = ball.owner.x + side * 18;
+        ball.y = ball.owner.y;
+        if (freezeTimer <= 0) {
+            players.forEach(p => {
+                if (p === ball.owner || p.stumble > 0) return;
+                if (Math.sqrt((p.x-ball.owner.x)**2 + (p.y-ball.owner.y)**2) < 35) {
+                    let stealProb = (p.team === 'blue' && !p.isUser) ? 0.005 : 0.009; 
+                    if (Math.random() < stealProb) { ball.owner.stumble = 50; ball.owner = p; }
+                }
+            });
+        }
+    }
+    if (ball.x < 0 && ball.y > GOAL_Y && ball.y < GOAL_Y + GOAL_H) { score.red++; kickoffSide = 'blue'; reset(); }
+    if (ball.x > canvas.width && ball.y > GOAL_Y && ball.y < GOAL_Y + GOAL_H) { score.blue++; kickoffSide = 'red'; reset(); }
+    if (ball.y < ball.r || ball.y > canvas.height - ball.r) ball.dy *= -0.6;
+    if ((ball.x < 0 || ball.x > canvas.width) && (ball.y < GOAL_Y || ball.y > GOAL_Y + GOAL_H)) ball.dx *= -0.6;
+}
+
+function reset() {
+    ball.x = canvas.width / 2; ball.y = canvas.height / 2;
+    ball.dx = 0; ball.dy = 0;
+    players[0].x = canvas.width * 0.3;  players[0].y = canvas.height * 0.5;
+    players[1].x = canvas.width * 0.15; players[1].y = canvas.height * 0.3;
+    players[2].x = canvas.width * 0.7;  players[2].y = canvas.height * 0.5;
+    players[3].x = canvas.width * 0.85; players[3].y = canvas.height * 0.7;
+    ball.owner = players.find(p => p.team === kickoffSide && p.role === 'attacker');
+    players.forEach(p => { p.stumble = 0; p.kickCD = 0; p.thinkTimer = 0; p.reactionDelay = 0; });
+    freezeTimer = 120;
+    recoveryTimer = 0;
+}
+
+function fullReset() {
+    score = { blue: 0, red: 0 };
+    matchTime = 120;
+    isAddedTime = false;
+    gameOver = false;
+    restartBtn.style.display = 'none';
+    reset();
+}
+
+reset();
+
+const joy = document.getElementById('joyArea'), st = document.getElementById('stick');
+joy.addEventListener('touchmove', e => {
+    e.preventDefault(); const t = e.touches[0], r = joy.getBoundingClientRect();
+    let dx = t.clientX - (r.left + r.width/2), dy = t.clientY - (r.top + r.height/2);
+    const lim = 35, d = Math.sqrt(dx*dx + dy*dy);
+    if (d > lim) { dx *= lim/d; dy *= lim/d; }
+    st.style.transform = `translate(${dx}px, ${dy}px)`;
+    input.x = dx/lim; input.y = dy/lim;
+}, {passive: false});
+joy.addEventListener('touchend', () => { st.style.transform = 'translate(0,0)'; input.x = 0; input.y = 0; });
+
+document.getElementById('btnPass').addEventListener('touchstart', e => {
+    e.preventDefault(); if (ball.owner === players[0] && !gameOver) {
+        let tm = players.find(p => p.team === 'blue' && !p.isUser);
+        players[0].kick(tm.x, tm.y, 11);
+    }
+});
+document.getElementById('btnShoot').addEventListener('touchstart', e => {
+    e.preventDefault(); if (ball.owner === players[0] && !gameOver) {
+        players[0].kick(canvas.width, canvas.height/2, 18);
+        recoveryTimer = 100;
+    }
+});
+
+function loop() {
+    ctx.fillStyle = '#011201'; ctx.fillRect(0,0,canvas.width, canvas.height);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; 
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.strokeRect(0, GOAL_Y, 15, GOAL_H); ctx.strokeRect(canvas.width-15, GOAL_Y, 15, GOAL_H);
+    updateTimer();
+    physics();
+    players.forEach(p => { p.update(); p.draw(); });
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
