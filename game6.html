@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kebab Majster: Pro Slicer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
+        
+        body { margin: 0; background: #1a1a1a; font-family: 'Montserrat', sans-serif; overflow: hidden; touch-action: none; }
+        #game-container { display: flex; flex-direction: column; height: 100vh; }
+
+        /* Top View */
+        #street-view { 
+            flex: 0.35; background: linear-gradient(#4facfe, #00f2fe);
+            position: relative; display: flex; justify-content: center; align-items: flex-end;
+            border-bottom: 5px solid #333;
+        }
+        #customer { width: 90px; height: 130px; background: #ffdbac; border-radius: 20px 20px 0 0; position: relative; transition: transform 0.4s; }
+        #bubble { position: absolute; bottom: 140px; left: 50%; transform: translateX(-50%); background: white; padding: 10px; border-radius: 15px; width: 220px; text-align: center; font-size: 13px; border: 3px solid #333; z-index: 50; }
+
+        /* Bottom Workstation */
+        #workstation { flex: 0.65; background: #e0e0e0; position: relative; display: flex; flex-direction: column; }
+        
+        /* Layout Fix: Lowered stations to clear buttons */
+        #prep-layout { display: flex; flex: 1; padding: 60px 10px 10px 10px; gap: 10px; }
+        
+        /* Left: Meat Pole (Moved Down) */
+        #meat-station { width: 110px; display: flex; flex-direction: column; align-items: center; position: relative; }
+        #pole { width: 8px; height: 130px; background: #555; position: absolute; top: 0; }
+        #meat-block { 
+            width: 55px; height: 100px; background: #8b4513; border-radius: 8px; 
+            margin-top: 15px; position: relative; overflow: hidden;
+            animation: spin 3s linear infinite; border: 2px solid #5d2e0a;
+        }
+        @keyframes spin { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15); } }
+        #slicer { font-size: 35px; position: absolute; top: -10px; right: -25px; z-index: 20; touch-action: none; transition: transform 0.1s; }
+
+        /* Middle: Kebab Base */
+        #main-prep { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #kebab-base { width: 140px; height: 180px; background: #f4d03f; border-radius: 10px 10px 70px 70px; border: 4px solid #d4ac0d; display: flex; flex-direction: column-reverse; align-items: center; padding-bottom: 10px; box-shadow: inset 0 -10px rgba(0,0,0,0.1); }
+
+        /* Right: Fries (Moved Away from Serve Button) */
+        #fries-station { width: 100px; display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 20px; }
+        #fryer { width: 85px; height: 85px; background: #7f8c8d; border: 4px solid #34495e; border-radius: 10px; position: relative; display: flex; justify-content: center; align-items: center; font-size: 28px; overflow: hidden; }
+        .oil-fill { position: absolute; bottom: 0; width: 100%; height: 0%; background: rgba(241, 196, 15, 0.6); transition: height 3s linear; }
+
+        /* UI elements */
+        #shelf { height: 90px; background: #ccc; display: flex; justify-content: space-around; align-items: center; border-top: 4px solid #999; }
+        .source-item { font-size: 42px; touch-action: none; position: relative; }
+        #meat-stock-tag { position: absolute; top: -8px; right: -8px; background: #e67e22; color: white; font-size: 12px; padding: 2px 6px; border-radius: 10px; border: 2px solid white; font-weight: 800; }
+        
+        .dragged-item { position: absolute; font-size: 45px; pointer-events: none; z-index: 100; }
+        .kebab-layer { font-size: 38px; margin-bottom: -28px; }
+
+        #serve-btn { position: absolute; right: 10px; top: 10px; background: #2ecc71; color: white; border: 3px solid #27ae60; padding: 12px 15px; border-radius: 12px; font-weight: 800; z-index: 100; box-shadow: 0 4px 0 #27ae60; }
+        #trash-btn { position: absolute; left: 10px; top: 10px; background: #e74c3c; color: white; border: 3px solid #c0392b; padding: 12px 15px; border-radius: 12px; z-index: 100; box-shadow: 0 4px 0 #c0392b; }
+
+        .jump { animation: jumpAnim 0.5s ease; }
+        .shake { animation: shakeAnim 0.5s ease; }
+        @keyframes jumpAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-40px); } }
+        @keyframes shakeAnim { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-15px); } 75% { transform: translateX(15px); } }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="street-view">
+        <div id="bubble">Dobrodošli!</div>
+        <div id="customer"></div>
+    </div>
+    <div id="workstation">
+        <button id="trash-btn">IZBRIŠI</button>
+        <button id="serve-btn">POSTREŽI!</button>
+        
+        <div id="prep-layout">
+            <div id="meat-station">
+                <div id="pole"></div>
+                <div id="meat-block"></div>
+                <div id="slicer">🔪</div>
+            </div>
+            
+            <div id="main-prep">
+                <div id="kebab-base"></div>
+            </div>
+            
+            <div id="fries-station">
+                <div id="potato-src" data-type="Krompir">🥔</div>
+                <div id="fryer">🍟<div class="oil-fill" id="oil-lvl"></div></div>
+            </div>
+        </div>
+
+        <div id="shelf">
+            <div class="source-item" data-type="Meso">🥩<span id="meat-stock-tag">0/3</span></div>
+            <div class="source-item" data-type="Solata">🥬</div>
+            <div class="source-item" data-type="Paradižnik">🍅</div>
+            <div class="source-item" data-type="Čebula">🧅</div>
+            <div class="source-item" data-type="Pekoče">🌶️</div>
+            <div class="source-item" id="fries-ready" data-type="Pomfri" style="opacity:0.25">🍟</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const kebabBase = document.getElementById('kebab-base');
+    const bubble = document.getElementById('bubble');
+    const customer = document.getElementById('customer');
+    const slicer = document.getElementById('slicer');
+    const meatBlock = document.getElementById('meat-block');
+    const oilLvl = document.getElementById('oil-lvl');
+    const friesReady = document.getElementById('fries-ready');
+    const meatStockTag = document.getElementById('meat-stock-tag');
+    
+    let playerKebab = [];
+    let currentOrder = [];
+    let sliceCounter = 0;
+    let meatStock = 0;
+    const MAX_MEAT = 3;
+    let isFrying = false;
+    let activeDrag = null;
+
+    const recipes = [
+        { text: "En kebab z vsem in pomfri!", req: ["Meso", "Solata", "Paradižnik", "Čebula", "Pekoče", "Pomfri"] },
+        { text: "Samo meso, čebula in pomfri noter.", req: ["Meso", "Čebula", "Pomfri"] },
+        { text: "Jaz bi samo velik pomfri!", req: ["Pomfri", "Pomfri"] },
+        { text: "Dvojno meso in pekoče, brez solate.", req: ["Meso", "Meso", "Pekoče"] }
+    ];
+
+    function nextCustomer() {
+        playerKebab = []; kebabBase.innerHTML = "";
+        customer.classList.remove('jump', 'shake');
+        customer.style.transform = "translateX(400px)";
+        setTimeout(() => {
+            const r = recipes[Math.floor(Math.random() * recipes.length)];
+            currentOrder = r.req; bubble.innerText = r.text;
+            customer.style.transform = "translateX(0px)";
+        }, 600);
+    }
+
+    // UPDATED SLICING LOGIC
+    let slicerOrigin = { x: 0, y: 0 };
+    let lastSwipeDir = null;
+
+    slicer.addEventListener('touchstart', (e) => {
+        const t = e.touches[0];
+        slicerOrigin.x = t.clientX; slicerOrigin.y = t.clientY;
+    });
+
+    slicer.addEventListener('touchmove', (e) => {
+        const t = e.touches[0];
+        const dx = t.clientX - slicerOrigin.x;
+        const dy = t.clientY - slicerOrigin.y;
+        slicer.style.transform = `translate(${dx}px, ${dy}px)`;
+
+        const sRect = slicer.getBoundingClientRect();
+        const mRect = meatBlock.getBoundingClientRect();
+
+        // Check intersection with meat
+        if (sRect.left < mRect.right && sRect.right > mRect.left && sRect.top < mRect.bottom && sRect.bottom > mRect.top) {
+            const currentDir = dy > 0 ? 'down' : 'up';
+            // Count swipes when changing direction (active slicing)
+            if (Math.abs(dy) > 15 && lastSwipeDir !== currentDir) {
+                lastSwipeDir = currentDir;
+                if (meatStock < MAX_MEAT) {
+                    sliceCounter++;
+                    if (sliceCounter >= 5) {
+                        meatStock++;
+                        sliceCounter = 0;
+                        updateMeatUI();
+                    }
+                }
+            }
+        }
+    });
+
+    slicer.addEventListener('touchend', () => {
+        slicer.style.transform = `translate(0,0)`;
+        lastSwipeDir = null;
+    });
+
+    function updateMeatUI() {
+        meatStockTag.innerText = `${meatStock}/${MAX_MEAT}`;
+        meatStockTag.style.background = meatStock === MAX_MEAT ? "#c0392b" : "#e67e22";
+    }
+
+    // DRAG LOGIC
+    document.querySelectorAll('.source-item, #potato-src').forEach(item => {
+        item.addEventListener('touchstart', (e) => {
+            if (item.dataset.type === "Meso" && meatStock <= 0) return;
+            if (item.id === "fries-ready" && item.style.opacity < 1) return;
+
+            const t = e.touches[0];
+            activeDrag = { el: item.cloneNode(true), type: item.dataset.type, emoji: item.innerText.split('0')[0].trim() };
+            activeDrag.el.classList.add('dragged-item');
+            document.body.appendChild(activeDrag.el);
+            moveDrag(t.clientX, t.clientY);
+        });
+    });
+
+    window.addEventListener('touchmove', (e) => { if(activeDrag) moveDrag(e.touches[0].clientX, e.touches[0].clientY); });
+
+    window.addEventListener('touchend', (e) => {
+        if (!activeDrag) return;
+        const t = e.changedTouches[0];
+        const kRect = kebabBase.getBoundingClientRect();
+        const fRect = document.getElementById('fryer').getBoundingClientRect();
+
+        if (t.clientX > kRect.left && t.clientX < kRect.right && t.clientY > kRect.top && t.clientY < kRect.bottom) {
+            if (activeDrag.type !== "Krompir") {
+                if (activeDrag.type === "Meso") { meatStock--; updateMeatUI(); }
+                if (activeDrag.type === "Pomfri") { friesReady.style.opacity = 0.25; }
+                addIngredient(activeDrag.type, activeDrag.emoji);
+            }
+        }
+        if (activeDrag.type === "Krompir" && t.clientX > fRect.left && t.clientX < fRect.right && t.clientY > fRect.top && t.clientY < fRect.bottom) {
+            if (!isFrying) startFrying();
+        }
+        document.body.removeChild(activeDrag.el);
+        activeDrag = null;
+    });
+
+    function startFrying() {
+        isFrying = true; oilLvl.style.height = "100%";
+        setTimeout(() => {
+            isFrying = false; oilLvl.style.height = "0%";
+            friesReady.style.opacity = 1;
+        }, 3000);
+    }
+
+    function addIngredient(type, emoji) {
+        playerKebab.push(type);
+        const l = document.createElement('div'); l.className = 'kebab-layer'; l.innerText = emoji;
+        kebabBase.appendChild(l);
+    }
+
+    function moveDrag(x, y) { activeDrag.el.style.left = (x-22)+'px'; activeDrag.el.style.top = (y-22)+'px'; }
+
+    function serve() {
+        if (playerKebab.length === 0) return;
+        const oTally = {}; const pTally = {};
+        currentOrder.forEach(i => oTally[i] = (oTally[i]||0)+1);
+        playerKebab.forEach(i => pTally[i] = (pTally[i]||0)+1);
+        const keys = new Set([...Object.keys(oTally), ...Object.keys(pTally)]);
+        let res = "perfect";
+        for (let k of keys) {
+            if ((pTally[k]||0) > (oTally[k]||0)) res = "tooMuch";
+            else if ((pTally[k]||0) < (oTally[k]||0)) res = "wrong";
+            if (res !== "perfect") break;
+        }
+        bubble.innerText = res === "perfect" ? "To je to! Odlično!" : "Nisi mi prav naredil...";
+        customer.classList.add(res === "perfect" ? 'jump' : 'shake');
+        setTimeout(nextCustomer, 2000);
+    }
+
+    document.getElementById('serve-btn').addEventListener('touchstart', (e) => { e.preventDefault(); serve(); });
+    document.getElementById('trash-btn').addEventListener('touchstart', (e) => { e.preventDefault(); playerKebab = []; kebabBase.innerHTML = ""; });
+
+    nextCustomer();
+</script>
+</body>
+</html>
