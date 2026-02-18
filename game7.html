@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pin Striker: Motivation & Rust</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700&display=swap');
+
+        body { 
+            margin: 0; background: #1a1a1a; font-family: 'Bungee', cursive; 
+            overflow: hidden; touch-action: none; height: 100dvh; 
+            display: flex; flex-direction: column;
+        }
+
+        /* Motivation Header */
+        #header-area {
+            height: 120px; background: #2c3e50; border-bottom: 4px solid #f1c40f;
+            display: flex; align-items: center; justify-content: center; padding: 0 20px;
+            gap: 20px;
+        }
+        #quote-box {
+            flex: 1; background: #34495e; border-radius: 10px; height: 80px;
+            display: flex; align-items: center; justify-content: center;
+            padding: 10px; border: 2px solid rgba(255,255,255,0.1);
+        }
+        #quote-text {
+            font-family: 'Inter', sans-serif; color: #ecf0f1; font-style: italic;
+            font-size: 14px; text-align: center; line-height: 1.2;
+        }
+        #stats-panel { width: 100px; color: #f1c40f; text-align: right; }
+
+        #game-canvas {
+            flex: 1; width: 100%; background: #3d2b1f; /* Darker workshop floor */
+            position: relative; overflow: hidden;
+        }
+
+        /* Hammer Health Bar */
+        #health-container {
+            position: absolute; top: 10px; left: 10px; width: 150px; height: 15px;
+            background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 10px;
+        }
+        #health-bar { width: 100%; height: 100%; background: #2ecc71; border-radius: 8px; transition: width 0.3s, background 0.3s; }
+
+        /* Wood Plank */
+        #wood-plank {
+            position: absolute; bottom: 10%; left: 5%; width: 90%; height: 140px;
+            background: #cd853f; border: 6px solid #5d2e0a; border-radius: 8px;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.05) 40px, rgba(0,0,0,0.05) 80px);
+            box-shadow: 0 10px 0 #2a1506;
+        }
+
+        /* Pins */
+        .pin {
+            position: absolute; width: 14px; height: 60px;
+            background: #bdc3c7; border-radius: 2px;
+            bottom: 140px; transition: bottom 0.1s ease-out;
+            transform-origin: bottom center;
+        }
+        .pin-head { position: absolute; top: 0; left: -5px; width: 24px; height: 7px; background: #95a5a6; border-radius: 3px; }
+        
+        .pin.golden { background: #f1c40f; box-shadow: 0 0 10px #f1c40f; }
+        .pin.golden .pin-head { background: #f39c12; }
+        
+        .pin.rusty { background: #8b4513; border: 1px dashed #4e2a07; }
+        .pin.rusty .pin-head { background: #5d2e0a; }
+
+        /* Hammer */
+        #hammer {
+            position: absolute; width: 60px; height: 80px;
+            pointer-events: none; z-index: 100; transform-origin: top center;
+        }
+        #hammer-head { width: 60px; height: 35px; background: #7f8c8d; border-radius: 5px; border-bottom: 6px solid #2c3e50; }
+        #hammer-handle { width: 16px; height: 50px; background: #a0522d; margin: -5px auto 0; border-radius: 0 0 5px 5px; }
+
+        .hit-fx {
+            position: absolute; color: white; font-weight: bold; font-size: 20px;
+            pointer-events: none; animation: floatUp 0.6s ease-out forwards; z-index: 110;
+        }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-60px) scale(1.5); } }
+
+        #game-over {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; flex-direction: column;
+            align-items: center; justify-content: center; color: white; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="header-area">
+    <div id="quote-box">
+        <div id="quote-text">"Pripravi se na delo! Vsak udarec šteje."</div>
+    </div>
+    <div id="stats-panel">
+        <div id="score">0</div>
+        <div style="font-size: 10px;">TOČKE</div>
+    </div>
+</div>
+
+<div id="game-canvas">
+    <div id="health-container"><div id="health-bar"></div></div>
+    <div id="wood-plank"></div>
+    <div id="hammer">
+        <div id="hammer-head"></div>
+        <div id="hammer-handle"></div>
+    </div>
+
+    <div id="game-over">
+        <h1>HAMMER BROKEN!</h1>
+        <p id="final-score">Score: 0</p>
+        <button onclick="location.reload()" style="font-family:'Bungee'; padding: 10px 20px; background: #f1c40f; border:none; border-radius:5px; cursor:pointer;">TRY AGAIN</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const hammer = document.getElementById('hammer');
+    const healthBar = document.getElementById('health-bar');
+    const scoreEl = document.getElementById('score');
+    const quoteEl = document.getElementById('quote-text');
+    const gameOverScreen = document.getElementById('game-over');
+
+    let score = 0;
+    let hammerHealth = 100;
+    let pins = [];
+    let lastPos = { x: 0, y: 0 };
+    let speed = 0;
+    let gameActive = true;
+
+    const quotes = [
+        "Mojster se ne rodi, mojster se naredi!",
+        "Pazi na rjo! Uničuje orodje.",
+        "Zlati žeblji so tvoja vstopnica do slave!",
+        "Udari močno, a udari pametno.",
+        "Tvoj kladivo je tvoje življenje.",
+        "Še sosedje te slišijo, kako dobro zabijaš!",
+        "Rja je sovražnik številka ena."
+    ];
+
+    function updateQuote(msg) {
+        quoteEl.innerText = msg || quotes[Math.floor(Math.random() * quotes.length)];
+    }
+
+    function moveHammer(x, y) {
+        if (!gameActive) return;
+        speed = Math.abs(y - lastPos.y);
+        let tilt = (x - lastPos.x) * 1.5;
+        tilt = Math.max(Math.min(tilt, 30), -30);
+
+        hammer.style.left = (x - 30) + 'px';
+        hammer.style.top = (y - 20) + 'px';
+        hammer.style.transform = `rotate(${tilt}deg)`;
+
+        lastPos = { x, y };
+        checkHit(x, y);
+    }
+
+    window.addEventListener('mousemove', (e) => moveHammer(e.clientX, e.clientY));
+    window.addEventListener('touchmove', (e) => moveHammer(e.touches[0].clientX, e.touches[0].clientY));
+
+    function spawnPin() {
+        if (!gameActive) return;
+        const pin = document.createElement('div');
+        const rand = Math.random();
+        let type = 'normal';
+        
+        if (rand > 0.85) type = 'golden';
+        else if (rand < 0.25) type = 'rusty';
+
+        pin.className = 'pin ' + type;
+        pin.innerHTML = '<div class="pin-head"></div>';
+        
+        const xPos = 40 + Math.random() * (window.innerWidth - 80);
+        pin.style.left = xPos + 'px';
+        
+        const pinObj = { el: pin, x: xPos, depth: 0, type: type, active: true };
+        canvas.appendChild(pin);
+        pins.push(pinObj);
+    }
+
+    function checkHit(hx, hy) {
+        const hRect = document.getElementById('hammer-head').getBoundingClientRect();
+
+        pins.forEach(pin => {
+            if (!pin.active) return;
+            const pRect = pin.el.getBoundingClientRect();
+
+            if (hRect.bottom >= pRect.top && hRect.bottom <= pRect.top + 25 &&
+                hRect.left < pRect.right && hRect.right > pRect.left && speed > 8) {
+                
+                if (pin.type === 'rusty') {
+                    damageHammer();
+                    removePin(pin, "OUCH!");
+                } else {
+                    drivePin(pin);
+                }
+            }
+        });
+    }
+
+    function drivePin(pin) {
+        const force = Math.min(speed / 3, 20);
+        pin.depth += force;
+        pin.el.style.bottom = (140 - pin.depth) + 'px';
+
+        if (pin.depth >= 50) {
+            pin.active = false;
+            let gain = pin.type === 'golden' ? 100 : 20;
+            score += gain;
+            scoreEl.innerText = score;
+            updateQuote(pin.type === 'golden' ? "TA JE BIL ZLAT!" : "");
+            removePin(pin, "+" + gain);
+        }
+    }
+
+    function damageHammer() {
+        hammerHealth -= 20;
+        healthBar.style.width = hammerHealth + "%";
+        if (hammerHealth <= 40) healthBar.style.background = "#e67e22";
+        if (hammerHealth <= 20) healthBar.style.background = "#e74c3c";
+        
+        updateQuote("PREKLETA RJA!");
+        
+        if (hammerHealth <= 0) {
+            gameActive = false;
+            document.getElementById('final-score').innerText = "Final Score: " + score;
+            gameOverScreen.style.display = 'flex';
+        }
+    }
+
+    function removePin(pin, txt) {
+        const fx = document.createElement('div');
+        fx.className = 'hit-fx';
+        fx.innerText = txt;
+        fx.style.left = pin.x + 'px';
+        fx.style.top = (window.innerHeight - 200) + 'px';
+        canvas.appendChild(fx);
+        
+        pin.active = false;
+        setTimeout(() => {
+            pin.el.style.opacity = '0';
+            setTimeout(() => {
+                pin.el.remove();
+                pins = pins.filter(p => p !== pin);
+            }, 300);
+            fx.remove();
+        }, 500);
+    }
+
+    // Game Loops
+    setInterval(spawnPin, 1200);
+    setInterval(() => { if(gameActive && Math.random() > 0.7) updateQuote(); }, 4000);
+</script>
+</body>
+</html>
