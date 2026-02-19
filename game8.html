@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paper Pilot: Speed Rings</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Handlee&display=swap');
+        body { margin: 0; background: #f0f0f0; font-family: 'Handlee', cursive; overflow: hidden; touch-action: none; height: 100dvh; }
+        #ui { position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-around; color: #333; z-index: 10; pointer-events: none; font-size: 20px; }
+        canvas { display: block; background: linear-gradient(to bottom, #dcedf5, #f0f9ff); }
+        #msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: #2c3e50; font-size: 24px; text-align: center; pointer-events: none; z-index: 5; background: rgba(255,255,255,0.8); padding: 20px; border-radius: 15px; border: 2px solid #34495e; }
+        .stat-val { color: #d35400; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div>POT: <span id="dist" class="stat-val">0</span>m</div>
+    <div>OBROČI: <span id="rings" class="stat-val">0</span></div>
+</div>
+
+<div id="msg">POLETI SKOZI OBROČE! ⭕<br><span style="font-size: 14px;">Zlati obroči ti dajo pospešek in točke.</span></div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const distEl = document.getElementById('dist');
+    const ringsEl = document.getElementById('rings');
+    const msgEl = document.getElementById('msg');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let distance = 0;
+    let ringCount = 0;
+    let gameActive = false;
+    let frame = 0;
+    let worldSpeed = 2.8;
+
+    const plane = {
+        x: 80, y: canvas.height / 2,
+        velocity: 0,
+        gravity: 0.12,
+        lift: -3.2,
+        maxFall: 5,
+        angle: 0,
+        boostTimer: 0
+    };
+
+    let obstacles = [];
+    let speedRings = []; 
+
+    function handleInput(e) {
+        if(e) e.preventDefault();
+        if (!gameActive) { resetGame(); gameActive = true; msgEl.style.display = 'none'; return; }
+        plane.velocity = plane.lift;
+    }
+
+    window.addEventListener('touchstart', handleInput, {passive: false});
+    window.addEventListener('mousedown', handleInput);
+
+    function resetGame() {
+        plane.y = canvas.height / 2; plane.velocity = 0; plane.boostTimer = 0;
+        distance = 0; ringCount = 0; obstacles = []; speedRings = []; frame = 0; worldSpeed = 2.8;
+        distEl.innerText = "0"; ringsEl.innerText = "0";
+    }
+
+    function spawnEverything() {
+        if (frame % 110 === 0) {
+            const gap = 220; 
+            const top = 60 + Math.random() * (canvas.height - gap - 120);
+            obstacles.push({
+                x: canvas.width, top: top, bottom: top + gap, width: 45,
+                moveY: Math.random() > 0.7 ? 1 : 0, 
+                offset: 0, scored: false
+            });
+        }
+        
+        if (frame % 140 === 0) {
+            speedRings.push({
+                x: canvas.width, y: 100 + Math.random() * (canvas.height - 200),
+                collected: false, radius: 25
+            });
+        }
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        // Boost Logic
+        if (plane.boostTimer > 0) {
+            worldSpeed = 5.5;
+            plane.boostTimer--;
+        } else {
+            worldSpeed = 2.8;
+        }
+
+        // Physics
+        plane.velocity = Math.min(plane.maxFall, plane.velocity + plane.gravity);
+        plane.y += plane.velocity;
+        plane.angle = plane.velocity * 0.05;
+
+        if (plane.y > canvas.height || plane.y < 0) gameOver();
+
+        // Speed Rings Logic
+        for (let i = speedRings.length - 1; i >= 0; i--) {
+            let r = speedRings[i];
+            r.x -= worldSpeed;
+            
+            // Collection check
+            if (!r.collected && Math.hypot(plane.x - r.x, plane.y - r.y) < r.radius + 10) {
+                r.collected = true;
+                ringCount++;
+                ringsEl.innerText = ringCount;
+                plane.boostTimer = 40; // Short burst
+            }
+            if (r.x < -50) speedRings.splice(i, 1);
+        }
+
+        // Obstacle Logic
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            obs.x -= worldSpeed;
+            if (obs.moveY) obs.offset = Math.sin(frame * 0.04) * 35;
+
+            // Collision
+            if (plane.x + 8 > obs.x && plane.x - 8 < obs.x + obs.width) {
+                if (plane.y - 4 < obs.top + obs.offset || plane.y + 4 > obs.bottom + obs.offset) {
+                    gameOver();
+                }
+            }
+
+            if (!obs.scored && obs.x < plane.x) { 
+                obs.scored = true;
+                distance++; 
+                distEl.innerText = distance; 
+            }
+            if (obs.x < -60) obstacles.splice(i, 1);
+        }
+        
+        spawnEverything();
+        frame++;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Rings
+        speedRings.forEach(r => {
+            if (r.collected) return;
+            ctx.beginPath();
+            ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = "#f1c40f";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            // Inner glow
+            ctx.strokeStyle = "rgba(241, 196, 15, 0.3)";
+            ctx.lineWidth = 10;
+            ctx.stroke();
+        });
+
+        // Draw Obstacles
+        ctx.fillStyle = "#7f8c8d";
+        obstacles.forEach(obs => {
+            ctx.fillRect(obs.x, 0, obs.width, obs.top + obs.offset);
+            ctx.fillRect(obs.x, obs.bottom + obs.offset, obs.width, canvas.height);
+        });
+
+        // Draw Plane
+        ctx.save();
+        ctx.translate(plane.x, plane.y);
+        ctx.rotate(plane.angle);
+        
+        // Boost glow effect
+        if (plane.boostTimer > 0) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#f1c40f";
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(18, 0); ctx.lineTo(-15, -9); ctx.lineTo(-5, 0); ctx.lineTo(-15, 9);
+        ctx.closePath();
+        ctx.fillStyle = "white";
+        ctx.fill();
+        ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+    }
+
+    function gameOver() {
+        gameActive = false;
+        msgEl.innerHTML = `TRK! 📍<br>Razdalja: ${distance}m<br>Obroči: ${ringCount}<br><button onclick="location.reload()" style="font-family:'Handlee'; padding:12px 24px; margin-top:15px; background:#d35400; color:white; border:none; border-radius:10px; font-size: 18px;">POSKUSI ZNOVA</button>`;
+        msgEl.style.display = 'block';
+        msgEl.style.pointerEvents = 'auto';
+    }
+
+    function loop() { update(); draw(); requestAnimationFrame(loop); }
+    loop();
+</script>
+</body>
+</html>
